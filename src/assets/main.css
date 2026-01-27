@@ -18,3 +18,16 @@ body {
   margin: 0;
   background-color: var(--color-background);
 }
+
+/* Leaflet CSS fixes */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+}
+
+.leaflet-popup-content {
+  margin: 12px;
+}

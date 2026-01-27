@@ -1,31 +1,201 @@
 import { defineComponent, ref } from 'vue'
+import * as XLSX from 'xlsx'
+import FormSelect from '../components/FormSelect'
+import FileUpload from '../components/FileUpload'
+
+interface ExcelRow {
+  [key: string]: any
+}
 
 export default defineComponent({
   name: 'ImportProductionView',
+  components: {
+    FormSelect,
+    FileUpload
+  },
   setup() {
     const commodity = ref('')
     const year = ref('')
-    const fileInput = ref<HTMLInputElement | null>(null)
-    const fileName = ref('')
+    const selectedFile = ref<File | null>(null)
+    const previewData = ref<ExcelRow[]>([])
+    const previewHeaders = ref<string[]>([])
+    const showPreview = ref(false)
+    const isProcessing = ref(false)
 
-    const triggerFileUpload = () => {
-      fileInput.value?.click()
-    }
+    const commodityOptions = [
+      { value: 'PADI', label: 'Padi' },
+      { value: 'JAGUNG', label: 'Jagung' },
+      { value: 'KEDELAI', label: 'Kedelai' }
+    ]
 
-    const handleFileChange = (event: Event) => {
-      const target = event.target as HTMLInputElement
-      if (target.files && target.files.length > 0) {
-        fileName.value = target.files[0]?.name || ''
+    const yearOptions = [
+      { value: '2025', label: '2025' },
+      { value: '2024', label: '2024' },
+      { value: '2023', label: '2023' }
+    ]
+
+    const handleFileSelected = async (file: File) => {
+      selectedFile.value = file
+      isProcessing.value = true
+      
+      try {
+        // Read Excel file
+        const data = await file.arrayBuffer()
+        const workbook = XLSX.read(data, { type: 'array' })
+        
+        // Get first sheet
+        const firstSheetName = workbook.SheetNames[0]
+        if (!firstSheetName) {
+          alert('File tidak memiliki sheet')
+          showPreview.value = false
+          return
+        }
+        
+        const worksheet = workbook.Sheets[firstSheetName]
+        if (!worksheet) {
+          alert('Sheet tidak dapat dibaca')
+          showPreview.value = false
+          return
+        }
+        
+        // Get the range of the worksheet
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
+        
+        // Read headers from row 4 and row 5 (merged headers)
+        // Row 4: NO, KECAMATAN, Target Produksi, HASIL PRODUKSI, (empty for months), TOTAL, REALISASI
+        // Row 5: (empty), (empty), (empty), JANUARI, FEBRUARI, ..., DESEMBER, (empty), (empty)
+        const headers: string[] = []
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const row4Cell = worksheet[XLSX.utils.encode_cell({ r: 3, c: col })] // Row 4
+          const row5Cell = worksheet[XLSX.utils.encode_cell({ r: 4, c: col })] // Row 5
+          
+          const row4Value = row4Cell ? String(row4Cell.v).trim() : ''
+          const row5Value = row5Cell ? String(row5Cell.v).trim() : ''
+          
+          // Combine headers: use row 5 if exists (months), otherwise use row 4
+          let headerName = ''
+          if (row5Value && row5Value !== '') {
+            headerName = row5Value // Month names (JANUARI, FEBRUARI, etc.)
+          } else if (row4Value && row4Value !== '') {
+            headerName = row4Value // Main headers (NO, KECAMATAN, etc.)
+          } else {
+            headerName = `COLUMN_${col}` // Fallback
+          }
+          
+          headers.push(headerName)
+        }
+        
+        // Filter out empty headers
+        const validHeaders = headers.filter(h => h && h.trim() !== '' && !h.startsWith('COLUMN_'))
+        previewHeaders.value = validHeaders
+        
+        // Create column index mapping (only for valid headers)
+        const headerIndexMap = new Map<string, number>()
+        headers.forEach((h, idx) => {
+          if (h && h.trim() !== '' && !h.startsWith('COLUMN_')) {
+            headerIndexMap.set(h, idx)
+          }
+        })
+        
+        // Read data starting from row 6 (index 5)
+        const jsonData: ExcelRow[] = []
+        for (let row = 5; row <= Math.min(range.e.r, 14); row++) { // Read max 10 rows (6-15)
+          const rowData: ExcelRow = {}
+          
+          // Only read columns that have valid headers
+          validHeaders.forEach(header => {
+            const colIndex = headerIndexMap.get(header)
+            if (colIndex !== undefined) {
+              const cellAddress = XLSX.utils.encode_cell({ r: row, c: colIndex })
+              const cell = worksheet[cellAddress]
+              rowData[header] = cell ? String(cell.v) : ''
+            }
+          })
+          
+          jsonData.push(rowData)
+        }
+        
+        if (jsonData.length > 0) {
+          previewData.value = jsonData
+          showPreview.value = true
+        } else {
+          alert('File kosong atau format tidak valid')
+          showPreview.value = false
+        }
+      } catch (error) {
+        console.error('Error reading file:', error)
+        alert('Gagal membaca file. Pastikan format file benar.')
+        showPreview.value = false
+      } finally {
+        isProcessing.value = false
       }
     }
 
-    const handleImport = (e: Event) => {
+    const handleImport = async (e: Event) => {
       e.preventDefault()
-      console.log('Importing...', {
-        commodity: commodity.value,
-        year: year.value,
-        fileName: fileName.value
-      })
+      
+      if (!commodity.value || !year.value || !selectedFile.value) {
+        alert('Mohon lengkapi semua field')
+        return
+      }
+
+      if (previewData.value.length === 0) {
+        alert('Tidak ada data untuk diimport')
+        return
+      }
+
+      isProcessing.value = true
+
+      try {
+        // Prepare FormData
+        const formData = new FormData()
+        formData.append('file', selectedFile.value)
+        formData.append('komoditas', commodity.value)  // PADI, JAGUNG, KEDELAI
+        formData.append('tahun', year.value)           // 2025, 2024, 2023
+
+        // Determine endpoint based on commodity type
+        // For now, using produksi endpoint
+        const endpoint = '/api/upload/produksi'
+
+        console.log('Uploading to:', endpoint)
+        console.log('Komoditas:', commodity.value)
+        console.log('Tahun:', year.value)
+        console.log('File:', selectedFile.value.name)
+
+        // Send to backend
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const result = await response.json()
+        console.log('Upload result:', result)
+
+        // Show success message
+        alert(`Import berhasil!\n${result.message || 'Data telah diupload'}`)
+        
+        // Clear form
+        clearPreview()
+        commodity.value = ''
+        year.value = ''
+
+      } catch (error) {
+        console.error('Import error:', error)
+        alert(`Gagal import data: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      } finally {
+        isProcessing.value = false
+      }
+    }
+
+    const clearPreview = () => {
+      selectedFile.value = null
+      previewData.value = []
+      previewHeaders.value = []
+      showPreview.value = false
     }
 
     return () => (
@@ -34,83 +204,111 @@ export default defineComponent({
 
         <div class="bg-white rounded-lg p-10 shadow-sm border border-gray-100">
           <form onSubmit={handleImport}>
-            <div class="mb-8">
-              <label for="commodity" class="block text-sm pb-2 font-medium mb-3 text-gray-900">Komoditas</label>
-              <div class="relative">
-                <select 
-                  id="commodity" 
-                  v-model={commodity.value}
-                  class="w-full p-3 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-700 cursor-pointer appearance-none focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
-                >
-                  <option value="" disabled selected>--Pilih Komoditas--</option>
-                  <option value="padi">Padi</option>
-                  <option value="jagung">Jagung</option>
-                  <option value="kedelai">Kedelai</option>
-                </select>
-              </div>
-            </div>
+            <FormSelect
+              id="commodity"
+              label="Komoditas"
+              modelValue={commodity.value}
+              onUpdate:modelValue={(val: string) => commodity.value = val}
+              options={commodityOptions}
+              placeholder="--Pilih Komoditas--"
+            />
 
-            <div class="mb-8 pt-5">
-              <label for="year" class="block text-sm pb-2 font-medium mb-3 text-gray-900">Periode Tahun</label>
-              <div class="relative">
-                <select 
-                  id="year" 
-                  v-model={year.value}
-                  class="w-full p-3 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-700 cursor-pointer appearance-none focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
-                >
-                  <option value="" disabled selected>--Pilih Periode Tahun--</option>
-                  <option value="2024">2024</option>
-                  <option value="2023">2023</option>
-                  <option value="2022">2022</option>
-                </select>
-              </div>
-            </div>
+            <FormSelect
+              id="year"
+              label="Periode Tahun"
+              modelValue={year.value}
+              onUpdate:modelValue={(val: string) => year.value = val}
+              options={yearOptions}
+              placeholder="--Pilih Periode Tahun--"
+            />
 
-            <div class="mb-8 pt-5">
-              <label class="block text-sm pb-2 font-medium mb-3 text-gray-900">File Data Produksi</label>
-              <div 
-                class="border-2 border-dashed border-gray-300 rounded-xl py-12 px-4 text-center cursor-pointer transition-all duration-200 bg-gray-50 hover:border-gray-400 hover:bg-gray-100"
-                onClick={triggerFileUpload}
-              >
-                <input 
-                  type="file" 
-                  ref={fileInput} 
-                  class="hidden" 
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleFileChange}
-                />
-                <div class="flex flex-col items-center justify-center">
-                  <div class="mb-4">
-                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-gray-400">
-                        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M14 2V8H20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 18V12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M9 15H15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </div>
-                  {!fileName.value ? (
-                    <p class="text-sm text-gray-500">
-                      Masukan File Data Produksi, atau <span class="text-blue-600 underline font-medium">klik untuk melihat</span>
-                    </p>
-                  ) : (
-                    <p class="text-sm font-semibold text-emerald-600">
-                      Selected: {fileName.value}
-                    </p>
-                  )}
+            <FileUpload
+              label="File Data Produksi"
+              accept=".xlsx,.xls,.csv"
+              maxSize="10 MB"
+              supportedFormats=".xlsx, .xls, .csv"
+              onFileSelected={handleFileSelected}
+            />
+
+            {isProcessing.value && (
+              <div class="mt-6 text-center py-4 bg-blue-50 rounded-lg">
+                <span class="text-blue-600">Memproses file...</span>
+              </div>
+            )}
+
+            {showPreview.value && previewData.value.length > 0 && (
+              <div class="mt-8">
+                <div class="flex justify-between items-center mb-4">
+                  <h3 class="text-lg font-semibold text-gray-800">
+                    Preview Data ({previewData.value.length} baris pertama)
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={clearPreview}
+                    class="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    Hapus File
+                  </button>
+                </div>
+
+                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        {previewHeaders.value.map((header) => (
+                          <th 
+                            key={header}
+                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 last:border-r-0"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                      {previewData.value.map((row, index) => (
+                        <tr key={index} class="hover:bg-gray-50">
+                          {previewHeaders.value.map((header) => (
+                            <td 
+                              key={header}
+                              class="px-4 py-3 text-sm text-gray-700 border-r border-gray-200 last:border-r-0"
+                            >
+                              {row[header] || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p class="text-sm text-yellow-800">
+                    <strong>Catatan:</strong> Hanya menampilkan 10 baris pertama sebagai preview. 
+                    Semua data akan diimport saat Anda klik tombol "Import Data".
+                  </p>
                 </div>
               </div>
-              <div class="flex justify-between pt-2 mt-2 text-xs text-gray-400">
-                <span>Support file formats: .xlsx, .xls, .csv</span>
-                <span>Max size: 10 MB</span>
-              </div>
-            </div>
+            )}
 
-            <div class="flex justify-end pt-5">
+            <div class="flex justify-end gap-4 pt-5">
+              {showPreview.value && (
+                <button 
+                  type="button"
+                  onClick={clearPreview}
+                  class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-8 rounded-md font-medium text-sm transition-colors duration-200 cursor-pointer border-none"
+                >
+                  Batal
+                </button>
+              )}
               <button 
                 type="submit" 
-                class="bg-teal-500 hover:bg-teal-600 text-white py-3 px-8 rounded-md font-medium text-sm transition-colors duration-200 cursor-pointer border-none"
+                disabled={!showPreview.value || isProcessing.value}
+                class={`py-3 px-8 rounded-md font-medium text-sm transition-colors duration-200 border-none ${
+                  showPreview.value && !isProcessing.value
+                    ? 'bg-teal-500 hover:bg-teal-600 text-white cursor-pointer'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 Import Data
               </button>
