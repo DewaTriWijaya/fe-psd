@@ -30,7 +30,7 @@ export default defineComponent({
     },
     lastUpdate: {
       type: String,
-      default: '1 Agustus 2025'
+      default: '1 Januari 2025'
     },
     komoditas: {
       type: String,
@@ -57,17 +57,17 @@ export default defineComponent({
     let garutLayer: L.GeoJSON | null = null
 
     const legendItems: LegendItem[] = [
-      { color: '#2c5f6f', label: 'Tinggi' },
-      { color: '#4a9d7f', label: 'Sedang' },
-      { color: '#a8d5ba', label: 'Rendah' }
+      { color: '#0d4a2b', label: 'Tinggi' },
+      { color: '#1a6b3f', label: 'Sedang' },
+      { color: '#2d8f5a', label: 'Rendah' }
     ]
 
     // Function to get color based on production group
     const getColorFromGroup = (kelompokProduksi: string): string => {
       const group = kelompokProduksi.toLowerCase()
-      if (group === 'tinggi') return '#2c5f6f'
-      if (group === 'sedang') return '#4a9d7f'
-      if (group === 'rendah') return '#a8d5ba'
+      if (group === 'tinggi') return '#0d4a2b'
+      if (group === 'sedang') return '#1a6b3f'
+      if (group === 'rendah') return '#2d8f5a'
       return '#cccccc' // Default color
     }
 
@@ -267,7 +267,7 @@ export default defineComponent({
     )
 
     return () => (
-      <div class="bg-white rounded-lg p-8 border border-gray-100 shadow-sm mb-10">
+      <div class="bg-white rounded-lg p-8 border border-gray-100 shadow-sm mb-10" style="margin-bottom: 2.5rem;">
         <h2 class="text-xl font-semibold text-gray-800 mb-2">{props.title}</h2>
         <p class="text-sm text-gray-500 mb-6">Terakhir update: {props.lastUpdate}</p>
         

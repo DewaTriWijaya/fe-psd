@@ -48,9 +48,9 @@ export default defineComponent({
     ]
 
     const statusData = [
-      { status: 'Tinggi', count: 30, bgColor: '#2c5f6f' },
-      { status: 'Sedang', count: 8, bgColor: '#4a9d7f' },
-      { status: 'Rendah', count: 4, bgColor: '#a8d5ba' }
+      { status: 'Tinggi', count: 30, bgColor: '#0d4a2b' },
+      { status: 'Sedang', count: 8, bgColor: '#1a6b3f' },
+      { status: 'Rendah', count: 4, bgColor: '#2d8f5a' }
     ]
 
     return () => (
@@ -58,7 +58,7 @@ export default defineComponent({
         <h1 class="text-4xl font-semibold text-gray-700 mb-8">Dashboard</h1>
 
         {/* Filters Section */}
-        <div class="grid grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-4 gap-6 mb-8" style="margin-bottom: 2rem;">
           <FilterSelect
             label="Komoditas"
             modelValue={selectedKomoditas.value}
@@ -86,7 +86,7 @@ export default defineComponent({
         </div>
 
         {/* Status Cards */}
-        <div class="grid grid-cols-3 gap-6 mb-10">
+        <div class="grid grid-cols-3 gap-10 mb-8" style="gap: 2.5rem; margin-bottom: 2rem;">
           {statusData.map((data) => (
             <StatusCard
               key={data.status}
