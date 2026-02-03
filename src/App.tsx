@@ -8,7 +8,7 @@ export default defineComponent({
     return () => (
       <div class="min-h-screen flex flex-col">
         <Navbar />
-        <main class="flex-1 w-full">
+        <main class="flex-1 w-full pt-16">
           <RouterView />
         </main>
       </div>

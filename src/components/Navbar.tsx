@@ -5,7 +5,7 @@ export default defineComponent({
   name: 'Navbar',
   setup() {
     return () => (
-      <header class="bg-linear-to-r from-[#208bc2] to-[#177ea3] text-white shadow-md">
+      <header class="fixed top-0 left-0 right-0 z-50 bg-linear-to-r from-[#208bc2] to-[#177ea3] text-white shadow-md">
         <div class="w-full h-16 flex items-center justify-between px-20">
           <div class="flex items-center gap-3 font-bold text-xl">
             {/* Placeholder Icon */}

@@ -173,7 +173,7 @@ export default defineComponent({
           properties: {
             name: name,
             kecamatanData: kecamatanInfo,
-            status: kecamatanInfo ? getColorFromGroup(kecamatanInfo.kelompok_produksi) : '#cccccc'
+            status: kecamatanInfo ? getColorFromGroup(kecamatanInfo.kelompok_produksi) : '#a7f3d0'
           },
           geometry: geometry
         })
@@ -187,12 +187,12 @@ export default defineComponent({
       // Add GeoJSON layer with styling
       garutLayer = L.geoJSON(geojsonData as any, {
         style: (feature) => {
-          const color = feature?.properties?.status || '#cccccc'
+          const color = feature?.properties?.status || '#a7f3d0'
           return {
             fillColor: color,
             weight: 2,
             opacity: 1,
-            color: 'white',
+            color: 'black',
             fillOpacity: 1
           }
         },
