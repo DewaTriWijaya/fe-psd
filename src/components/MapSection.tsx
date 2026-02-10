@@ -277,11 +277,11 @@ export default defineComponent({
           </div>
         )}
         
-        {error.value && (
-          <div class="text-center py-4 text-red-500">
-            <span>Error: {error.value}</span>
+        {/* {error.value && (
+          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-4">
+            <p class="text-yellow-800 text-center">Data tidak ditemukan</p>
           </div>
-        )}
+        )} */}
         
         <div class="bg-gray-50 rounded-lg overflow-hidden">
           <div 

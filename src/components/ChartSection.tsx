@@ -246,15 +246,15 @@ export default defineComponent({
             </div>
           )}
           
-          {error.value && (
+          {/* {error.value && (
             <div class="text-center py-12">
-              <div class="bg-red-50 border border-red-200 rounded-lg p-4 inline-block">
-                <p class="text-red-600">Error: {error.value}</p>
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 inline-block">
+                <p class="text-yellow-800">Data tidak ditemukan</p>
               </div>
             </div>
-          )}
+          )} */}
           
-          {!loading.value && !error.value && chartData.value.length > 0 && (
+          {!loading.value && chartData.value.length > 0 && (
             <div>
               {/* Statistics Cards */}
               {statistikKeseluruhan.value && (
@@ -524,7 +524,7 @@ export default defineComponent({
               </div>
 
               {/* Monthly Details Table */}
-              <div class="mt-6 bg-gray-50 rounded-lg p-6">
+              {/* <div class="mt-6 bg-gray-50 rounded-lg p-6">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">Detail Bulanan</h3>
                 <div class="overflow-x-auto">
                   <table class="w-full text-sm">
@@ -555,7 +555,13 @@ export default defineComponent({
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </div> */}
+            </div>
+          )}
+          
+          {!loading.value && chartData.value.length === 0 && (
+            <div class="text-center py-12">
+              <p class="text-gray-500">Data tidak tersedia</p>
             </div>
           )}
         </div>
