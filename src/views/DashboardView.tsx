@@ -1,4 +1,4 @@
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
 import FilterSelect from '../components/FilterSelect'
 import StatusCard from '../components/StatusCard'
 import MapSection from '../components/MapSection'
@@ -18,7 +18,7 @@ export default defineComponent({
     const selectedTahun = ref(2025)
     const selectedBulanMulai = ref(1)
     const selectedBulanAkhir = ref(12)
-    
+
     // Price chart states
     const selectedKomoditasHarga = ref('Beras Premium')
     const selectedTahunHarga = ref(2022)
@@ -54,7 +54,7 @@ export default defineComponent({
     ]
 
     // Price chart filter options
-    const komoditasHargaOptions = [
+    const komoditasHargaOptions = ref<Array<{ value: string; label: string }>>([
       { value: 'Beras Premium', label: 'Beras Premium' },
       { value: 'Beras Medium', label: 'Beras Medium' },
       { value: 'Gula Pasir', label: 'Gula Pasir' },
@@ -64,24 +64,81 @@ export default defineComponent({
       { value: 'Telur Ayam', label: 'Telur Ayam' },
       { value: 'Cabai Merah', label: 'Cabai Merah' },
       { value: 'Bawang Merah', label: 'Bawang Merah' }
-    ]
+    ])
 
-    const tahunHargaOptions = [
-      { value: '2024', label: '2024' },
+    const tahunHargaOptions = ref<Array<{ value: string; label: string }>>([      { value: '2024', label: '2024' },
       { value: '2023', label: '2023' },
       { value: '2022', label: '2022' }
-    ]
+    ])
 
-    const tipeHargaOptions = [
+    const tipeHargaOptions = ref<Array<{ value: string; label: string }>>([
       { value: 'eceran', label: 'Eceran' },
       { value: 'grosir', label: 'Grosir' }
-    ]
+    ])
 
     const statusData = [
       { status: 'Tinggi', count: 30, bgColor: '#0d4a2b' },
       { status: 'Sedang', count: 8, bgColor: '#1a6b3f' },
       { status: 'Rendah', count: 4, bgColor: '#2d8f5a' }
     ]
+
+// Fetch komoditas harga, tahun harga, dan tipe harga dari API
+    onMounted(async () => {
+      try {
+        // Fetch komoditas harga
+        const responseKomoditas = await fetch('/api/metadata/komoditas-harga')
+        const resultKomoditas = await responseKomoditas.json()
+
+        if (resultKomoditas.success && resultKomoditas.data) {
+          // Transform array string menjadi format { value, label }
+          komoditasHargaOptions.value = resultKomoditas.data.map((item: string) => ({
+            value: item,
+            label: item
+          }))
+
+          // Set default value ke item pertama jika ada
+          if (resultKomoditas.data.length > 0) {
+            selectedKomoditasHarga.value = resultKomoditas.data[0]
+          }
+        }
+
+        // Fetch tahun harga
+        const responseTahun = await fetch('/api/metadata/tahun-harga')
+        const resultTahun = await responseTahun.json()
+
+        if (resultTahun.success && resultTahun.data) {
+          // Transform array number menjadi format { value, label }
+          tahunHargaOptions.value = resultTahun.data.map((year: number) => ({
+            value: year.toString(),
+            label: year.toString()
+          }))
+
+          // Set default value ke tahun pertama jika ada
+          if (resultTahun.data.length > 0) {
+            selectedTahunHarga.value = resultTahun.data[0]
+          }
+        }
+
+        // Fetch tipe harga
+        const responseTipe = await fetch('/api/metadata/tipe-harga')
+        const resultTipe = await responseTipe.json()
+
+        if (resultTipe.success && resultTipe.data) {
+          // Transform array string menjadi format { value, label }
+          tipeHargaOptions.value = resultTipe.data.map((item: string) => ({
+            value: item,
+            label: item.charAt(0).toUpperCase() + item.slice(1)
+          }))
+
+          // Set default value ke item pertama jika ada
+          if (resultTipe.data.length > 0) {
+            selectedTipeHarga.value = resultTipe.data[0]
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching metadata:', error)
+      }
+    })
 
     return () => (
       <div class="w-full px-36 py-10 text-gray-700">
@@ -128,7 +185,7 @@ export default defineComponent({
         </div>
 
         {/* Map Section */}
-        <MapSection 
+        <MapSection
           title="Persebaran Hasil Produksi"
           lastUpdate="1 Januari 2025"
           komoditas={selectedKomoditas.value}
@@ -145,25 +202,25 @@ export default defineComponent({
               label="Komoditas Harga"
               modelValue={selectedKomoditasHarga.value}
               onUpdate:modelValue={(val: string) => selectedKomoditasHarga.value = val}
-              options={komoditasHargaOptions}
+              options={komoditasHargaOptions.value}
             />
             <FilterSelect
               label="Tahun"
               modelValue={selectedTahunHarga.value.toString()}
               onUpdate:modelValue={(val: string) => selectedTahunHarga.value = parseInt(val)}
-              options={tahunHargaOptions}
+              options={tahunHargaOptions.value}
             />
             <FilterSelect
               label="Tipe Harga"
               modelValue={selectedTipeHarga.value}
               onUpdate:modelValue={(val: string) => selectedTipeHarga.value = val}
-              options={tipeHargaOptions}
+              options={tipeHargaOptions.value}
             />
           </div>
         </div>
 
         {/* Price Fluctuation Chart */}
-        <ChartSection 
+        <ChartSection
           title="Fluktuasi Harga"
           lastUpdate="1 Januari 2025"
           komoditas={selectedKomoditasHarga.value}

@@ -5,7 +5,7 @@ export default defineComponent({
   name: 'Navbar',
   setup() {
     return () => (
-      <header class="fixed top-0 left-0 right-0 z-50 bg-linear-to-r from-[#208bc2] to-[#177ea3] text-white shadow-md">
+      <header class="fixed top-0 left-0 right-0 z-99999 bg-linear-to-r from-[#208bc2] to-[#177ea3] text-white shadow-md">
         <div class="w-full h-16 flex items-center justify-between px-20">
           <div class="flex items-center gap-3 font-bold text-xl">
             {/* Placeholder Icon */}
@@ -18,24 +18,24 @@ export default defineComponent({
             </div>
             <span class="text-white">AgroMetrics</span>
           </div>
-          
+
           <nav class="flex gap-4">
-            <RouterLink 
-              to="/import-production" 
+            <RouterLink
+              to="/import-production"
               class="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors duration-200 text-white/90 hover:bg-white/10 hover:text-white"
               activeClass="bg-white/20 text-white"
             >
               <span class="font-bold text-lg">+</span> Import Data Produksi
             </RouterLink>
-            <RouterLink 
-              to="/import-price" 
+            <RouterLink
+              to="/import-price"
               class="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors duration-200 text-white/90 hover:bg-white/10 hover:text-white"
               activeClass="bg-white/20 text-white"
             >
               <span class="font-bold text-lg">+</span> Import Data Harga
             </RouterLink>
-            <RouterLink 
-              to="/dashboard" 
+            <RouterLink
+              to="/dashboard"
               class="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors duration-200 text-white/90 hover:bg-white/10 hover:text-white"
               activeClass="bg-white/20 text-white"
             >
