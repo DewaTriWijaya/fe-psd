@@ -183,6 +183,8 @@ export default defineComponent({
         const responseTipe = await fetch('/api/metadata/tipe-harga')
         const resultTipe = await responseTipe.json()
 
+        console.log('Tipe Harga Response:', resultTipe)
+
         if (resultTipe.success && resultTipe.data) {
           // Transform array string menjadi format { value, label }
           tipeHargaOptions.value = resultTipe.data.map((item: string) => ({
@@ -190,10 +192,15 @@ export default defineComponent({
             label: item.charAt(0).toUpperCase() + item.slice(1)
           }))
 
+          console.log('Tipe Harga Options:', tipeHargaOptions.value)
+
           // Set default value ke item pertama jika ada
           if (resultTipe.data.length > 0) {
             selectedTipeHarga.value = resultTipe.data[0]
+            console.log('Selected Tipe Harga:', selectedTipeHarga.value)
           }
+        } else {
+          console.warn('Tipe Harga Response tidak sesuai format:', resultTipe)
         }
       } catch (error) {
         console.error('Error fetching metadata:', error)

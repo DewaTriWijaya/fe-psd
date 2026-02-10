@@ -8,7 +8,7 @@ interface ExcelRow {
 export default defineComponent({
   name: 'ImportPriceView',
   setup() {
-    const commodity = ref('')
+    const tipeHarga = ref('')
     const year = ref('')
     const fileInput = ref<HTMLInputElement | null>(null)
     const fileName = ref('')
@@ -150,7 +150,7 @@ export default defineComponent({
         
         // Clear form and preview
         clearPreview()
-        commodity.value = ''
+        tipeHarga.value = ''
         year.value = ''
 
         console.log('Upload success:', result)
@@ -168,19 +168,17 @@ export default defineComponent({
         <div class="bg-white rounded-lg p-10 shadow-sm border border-gray-100">
           <form onSubmit={handleImport}>
             <div class="">
-              <label for="commodity" class="block text-sm pb-2 font-medium mb-3 text-gray-900">Periode Tahun</label>
+              <label for="tipeHarga" class="block text-sm pb-2 font-medium mb-3 text-gray-900">Tipe Harga</label>
               <div class="relative">
                 <select 
-                  id="commodity" 
-                  v-model={commodity.value}
+                  id="tipeHarga" 
+                  v-model={tipeHarga.value}
                   class="w-full p-3 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-700 cursor-pointer appearance-none focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
                 >
-                  <option value="" disabled selected>--Pilih Periode Tahun--</option>
-                  <option value="2025">2025</option>
-                  <option value="2024">2024</option>
-                  <option value="2023">2023</option>
-                  <option value="2022">2022</option>
+                  <option value="" disabled selected>--Pilih Tipe Harga--</option>
+                  <option value="eceran">Eceran</option>
+                  <option value="produsen">Produsen</option>
                 </select>
               </div>
             </div>
