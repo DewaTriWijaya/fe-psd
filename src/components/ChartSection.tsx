@@ -1,5 +1,7 @@
 import { defineComponent, ref, onMounted, watch } from 'vue'
 
+const apiMessage = ref<string | null>(null)
+
 interface ChartLegend {
   color: string
   label: string
@@ -87,35 +89,37 @@ export default defineComponent({
     const fetchPriceData = async () => {
       loading.value = true
       error.value = null
-      
+      apiMessage.value = null
+      chartData.value = []
+      statistikKeseluruhan.value = null
+      trend.value = null
+
       try {
         const url = `/api/analyze/fluktuasi-harga?komoditas=${encodeURIComponent(props.komoditas)}&tahun=${props.tahun}&tipe_harga=${props.tipeHarga}`
-        
+
         const response = await fetch(url)
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+
+        const data = await response.json()
+
+        // 🔴 HANDLE success false dari API
+        if (!response.ok || data.success === false) {
+          apiMessage.value = data.message || 'Data tidak ditemukan'
+          return
         }
-        
-        const data: ApiResponse = await response.json()
-        chartData.value = data.statistik_bulanan
-        statistikKeseluruhan.value = data.statistik_keseluruhan
-        trend.value = data.trend
+
+        chartData.value = data.statistik_bulanan || []
+        statistikKeseluruhan.value = data.statistik_keseluruhan || null
+        trend.value = data.trend || null
         komoditasName.value = data.komoditas
         tahunData.value = data.tahun
-        
-        console.log('Chart data loaded:', {
-          dataPoints: chartData.value.length,
-          firstMonth: chartData.value[0],
-          komoditas: komoditasName.value,
-          tahun: tahunData.value
-        })
+
       } catch (err) {
         error.value = err instanceof Error ? err.message : 'Failed to fetch data'
-        console.error('Error fetching price data:', err)
       } finally {
         loading.value = false
       }
     }
+
 
     // Calculate chart dimensions and scales
     const getChartPath = (dataPoints: number[], allDataPoints: number[][]) => {
@@ -559,7 +563,17 @@ export default defineComponent({
             </div>
           )}
           
-          {!loading.value && chartData.value.length === 0 && (
+          {!loading.value && apiMessage.value && (
+            <div class="text-center py-16">
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 inline-block">
+                <p class="text-yellow-800 font-medium">
+                  {apiMessage.value}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!loading.value && !apiMessage.value && chartData.value.length === 0 && (
             <div class="text-center py-12">
               <p class="text-gray-500">Data tidak tersedia</p>
             </div>

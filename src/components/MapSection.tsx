@@ -47,7 +47,9 @@ export default defineComponent({
     bulanAkhir: {
       type: Number,
       default: 12
-    }
+    },
+    hasData: Boolean,
+    message: String,
   },
   setup(props) {
     const mapContainer = ref<HTMLDivElement | null>(null)
@@ -88,28 +90,38 @@ export default defineComponent({
 
     // Fetch data from API
     const fetchProductionData = async () => {
+      if (props.hasData === false) {
+        return []
+      }
+
       loading.value = true
       error.value = null
-      
+
       try {
-        // Use relative URL to leverage Vite proxy
         const url = `/api/analyze/pengelompokan-produksi?komoditas=${props.komoditas}&tahun=${props.tahun}&bulan_mulai=${props.bulanMulai}&bulan_akhir=${props.bulanAkhir}`
-        
+
         const response = await fetch(url)
+
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          throw new Error('Data tidak ditemukan')
         }
-        
-        const data: ApiResponse = await response.json()
-        return data.detail_kecamatan
+
+        const data = await response.json()
+
+        if (data.success === false) {
+          throw new Error(data.message || 'Data tidak ditemukan')
+        }
+
+        return data.detail_kecamatan || []
+
       } catch (err) {
-        error.value = err instanceof Error ? err.message : 'Failed to fetch data'
-        console.error('Error fetching production data:', err)
+        error.value = 'Data tidak ditemukan'
         return []
       } finally {
         loading.value = false
       }
     }
+
 
     // Create map data lookup
     const createDataLookup = (kecamatanData: KecamatanData[]) => {
@@ -266,37 +278,79 @@ export default defineComponent({
       }
     )
 
+    watch(
+      () => props.hasData,
+      (newVal) => {
+        if (newVal) {
+          // ketika data balik lagi
+          setTimeout(() => {
+            if (map) {
+              map.invalidateSize()
+            }
+            initializeMap()
+          }, 100)
+        }
+      }
+    )
+
     return () => (
-      <div class="bg-white rounded-lg p-8 border border-gray-100 shadow-sm mb-10" style="margin-bottom: 2.5rem;">
-        <h2 class="text-xl font-semibold text-gray-800 mb-2">{props.title}</h2>
-        <p class="text-sm text-gray-500 mb-6">Terakhir update: {props.lastUpdate}</p>
-        
+      <div class="bg-white rounded-lg p-8 border border-gray-100 shadow-sm mb-10">
+
+        {/* HEADER */}
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">
+          {props.title}
+        </h2>
+        <p class="text-sm text-gray-500 mb-6">
+          Terakhir update: {props.lastUpdate}
+        </p>
+
+        {/* LOADING */}
         {loading.value && (
-          <div class="text-center py-4 text-gray-500">
-            <span>Loading data...</span>
+          <div class="text-center py-6 text-gray-500">
+            Loading data...
           </div>
         )}
-        
-        {/* {error.value && (
-          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-4">
-            <p class="text-yellow-800 text-center">Data tidak ditemukan</p>
-          </div>
-        )} */}
-        
-        <div class="bg-gray-50 rounded-lg overflow-hidden">
-          <div 
-            ref={mapContainer} 
-            style={{ height: '500px', width: '100%' }}
+
+        {/* MAP WRAPPER */}
+        <div class="bg-gray-50 rounded-lg overflow-hidden relative border border-gray-200">
+
+          {/* MESSAGE OVERLAY */}
+          {!props.hasData && (
+            <div class="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm z-50">
+              <div class="bg-yellow-50 border border-yellow-200 rounded-xl px-10 py-8 shadow-sm text-center">
+                <div class="text-4xl mb-3">⚠️</div>
+                <p class="text-yellow-800 font-semibold text-lg">
+                  {props.message || 'Data tidak ditemukan'}
+                </p>
+                <p class="text-yellow-700 text-sm mt-2">
+                  Silakan ubah filter untuk melihat data lainnya.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* MAP CONTAINER - SELALU ADA */}
+          <div
+            ref={mapContainer}
+            class="w-full"
+            style={{ height: '500px' }}
           ></div>
-          
-          <div class="flex justify-center gap-6 text-sm py-4">
+
+          {/* LEGEND */}
+          <div class="flex justify-center gap-8 text-sm py-5 bg-white border-t border-gray-200">
             {legendItems.map((item) => (
               <div key={item.label} class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded" style={{ backgroundColor: item.color }}></div>
-                <span class="text-gray-600">{item.label}</span>
+                <div
+                  class="w-4 h-4 rounded-sm"
+                  style={{ backgroundColor: item.color }}
+                ></div>
+                <span class="text-gray-600 font-medium">
+                  {item.label}
+                </span>
               </div>
             ))}
           </div>
+
         </div>
       </div>
     )

@@ -13,6 +13,9 @@ export default defineComponent({
     ChartSection
   },
   setup() {
+    const statusMessage = ref<string | undefined>(undefined)
+    const hasStatusData = ref(true)
+
     // Filter states
     const selectedKomoditas = ref('PADI')
     const selectedTahun = ref(2025)
@@ -27,9 +30,14 @@ export default defineComponent({
     // Filter options
     const komoditasOptions = [
       { value: 'PADI', label: 'Padi' },
+      { value: 'CABAI', label: 'Cabai' },
       { value: 'JAGUNG', label: 'Jagung' },
-      { value: 'KEDELAI', label: 'Kedelai' },
-      { value: 'Beras Premium', label: 'Beras Premium' }
+      { value: 'BAWANG MERAH', label: 'Bawang Merah' },
+      { value: 'JAHE', label: 'Jahe' },
+      { value: 'KENTANG', label: 'Kentang' },
+      { value: 'JERUK', label: 'Jeruk' },
+      { value: 'TEH', label: 'Teh' },
+      { value: 'KOPI', label: 'Kopi' }
     ]
 
     const tahunOptions = [
@@ -63,16 +71,24 @@ export default defineComponent({
       { value: 'Daging Sapi', label: 'Daging Sapi' },
       { value: 'Telur Ayam', label: 'Telur Ayam' },
       { value: 'Cabai Merah', label: 'Cabai Merah' },
-      { value: 'Bawang Merah', label: 'Bawang Merah' }
+      { value: 'Bawang Merah', label: 'Bawang Merah' },
+      { value: 'Jagung Pipilan Kering', label: 'Jagung Pipilan Kering' },
+      { value: 'Cabai Rawit Merah', label: 'Cabai Rawit Merah' },
+      { value: 'Cabai Merah Keriting', label: 'Cabai Merah Keriting' },
+      { value: 'Bawang Putih Bonggol', label: 'Bawang Putih Bonggol' }
     ])
 
-    const tahunHargaOptions = ref<Array<{ value: string; label: string }>>([      { value: '2024', label: '2024' },
+    const tahunHargaOptions = ref<Array<{ value: string; label: string }>>([    
+      { value: '2025', label: '2025' },  
+      { value: '2024', label: '2024' },
       { value: '2023', label: '2023' },
-      { value: '2022', label: '2022' }
+      { value: '2022', label: '2022' },
+      { value: '2021', label: '2021' },
     ])
 
     const tipeHargaOptions = ref<Array<{ value: string; label: string }>>([
-      { value: 'eceran', label: 'Eceran' }
+      { value: 'eceran', label: 'Eceran' },
+      { value: 'produsen', label: 'Produsen' }
     ])
 
     // Status data - will be populated from API
@@ -93,6 +109,9 @@ export default defineComponent({
     // Function to fetch production data and compute status count
     const fetchStatusData = async () => {
       try {
+        statusMessage.value = undefined
+        hasStatusData.value = true
+
         const params = new URLSearchParams({
           komoditas: selectedKomoditas.value,
           tahun: selectedTahun.value.toString(),
@@ -101,45 +120,50 @@ export default defineComponent({
         })
 
         const url = `/api/analyze/pengelompokan-produksi?${params}`
-        console.log('Fetching status data from:', url)
-        
+
         const response = await fetch(url)
-        
+
         if (!response.ok) {
-          console.warn('Data tidak ditemukan')
-          // Keep current statusData with 0 counts
-          return
+          throw new Error('Data tidak ditemukan')
         }
-        
+
         const result = await response.json()
-        console.log('API Response:', result)
 
-        // Get distribusi_realisasi from response
-        if (result.distribusi_realisasi && typeof result.distribusi_realisasi === 'object') {
-          const realizationMap = result.distribusi_realisasi as Record<string, number>
-          
-          console.log('Distribusi Realisasi map:', realizationMap)
-
-          // Transform to statusData format with colors, sorted by statusOrder
-          const newStatusData = statusOrder.map(status => ({
-            status,
-            count: realizationMap[status] || 0,
-            bgColor: statusColorMap[status] || '#2d8f5a'
-          }))
-
-          console.log('Updated status data:', newStatusData)
-          statusData.value = newStatusData
-        } else {
-          console.warn('Response does not contain distribusi_realisasi object')
-          // Keep current statusData with 0 counts
+        if (result.success === false) {
+          throw new Error(result.message || 'Data tidak ditemukan')
         }
-      } catch (error) {
-        console.error('Error fetching status data:', error)
-        // Keep current statusData with 0 counts
+
+        if (
+          !result.distribusi_realisasi ||
+          Object.keys(result.distribusi_realisasi).length === 0
+        ) {
+          throw new Error('Data tidak ditemukan')
+        }
+
+        const realizationMap = result.distribusi_realisasi as Record<string, number>
+
+        statusData.value = statusOrder.map(status => ({
+          status,
+          count: realizationMap[status] || 0,
+          bgColor: statusColorMap[status] || '#cccccc'
+        }))
+
+      } catch (err: any) {
+        hasStatusData.value = false
+        statusMessage.value = err.message || 'Data tidak ditemukan'
+
+        // reset semua count jadi 0
+        statusData.value = statusOrder.map(status => ({
+          status,
+          count: 0,
+          bgColor: statusColorMap[status] || '#cccccc'
+        }))
       }
     }
 
-// Fetch komoditas harga, tahun harga, dan tipe harga dari API
+
+
+    // Fetch komoditas harga, tahun harga, dan tipe harga dari API
     onMounted(async () => {
       try {
         // Fetch status data from production endpoint
@@ -249,15 +273,27 @@ export default defineComponent({
         </div>
 
         {/* Status Cards */}
-        <div class="grid grid-cols-3 gap-10 mb-8" style="gap: 2.5rem; margin-bottom: 2rem;">
-          {statusData.value.map((data) => (
-            <StatusCard
-              key={data.status}
-              status={data.status}
-              count={data.count}
-              bgColor={data.bgColor}
-            />
-          ))}
+        <div class="mb-8">
+          {!hasStatusData.value && (
+            <div class="text-center py-6">
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 inline-block">
+                <p class="text-yellow-800 font-medium">
+                  {statusMessage.value}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div class="grid grid-cols-3 gap-10" style="gap: 2.5rem;">
+            {statusData.value.map((data) => (
+              <StatusCard
+                key={data.status}
+                status={data.status}
+                count={data.count}
+                bgColor={data.bgColor}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Map Section */}
@@ -268,7 +304,13 @@ export default defineComponent({
           tahun={selectedTahun.value}
           bulanMulai={selectedBulanMulai.value}
           bulanAkhir={selectedBulanAkhir.value}
+          hasData={hasStatusData.value}
+          message={statusMessage.value}
         />
+
+
+        
+
 
         {/* Price Fluctuation Filters */}
         <div class="mb-6">

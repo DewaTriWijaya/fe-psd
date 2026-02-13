@@ -110,57 +110,66 @@ export default defineComponent({
       }
     }
 
-    const handleImport = async (e: Event) => {
-      e.preventDefault()
-      
-      // Clear previous messages
-      successMessage.value = ''
-      errorMessage.value = ''
+const handleImport = async (e: Event) => {
+  e.preventDefault()
 
-      // Validation
-      if (!selectedFile.value) {
-        errorMessage.value = 'Silakan pilih file terlebih dahulu'
-        return
-      }
+  successMessage.value = ''
+  errorMessage.value = ''
 
-      if (previewData.value.length === 0) {
-        errorMessage.value = 'Tidak ada data untuk diimport'
-        return
-      }
-      
-      // Create FormData
-      const formData = new FormData()
-      formData.append('file', selectedFile.value)
+  if (!selectedFile.value) {
+    errorMessage.value = 'Silakan pilih file terlebih dahulu'
+    return
+  }
 
-      loading.value = true
+  if (previewData.value.length === 0) {
+    errorMessage.value = 'Tidak ada data untuk diimport'
+    return
+  }
 
-      try {
-        const response = await fetch('/api/upload/harga', {
-          method: 'POST',
-          body: formData
-        })
+  const formData = new FormData()
+  formData.append('file', selectedFile.value)
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || `Upload failed with status ${response.status}`)
-        }
+  loading.value = true
 
-        const result = await response.json()
-        successMessage.value = 'Data harga berhasil diimport!'
-        
-        // Clear form and preview
-        clearPreview()
-        tipeHarga.value = ''
-        year.value = ''
+  try {
+    const response = await fetch('http://localhost:5000/api/upload/harga', {
+      method: 'POST',
+      body: formData
+    })
 
-        console.log('Upload success:', result)
-      } catch (error) {
-        console.error('Upload error:', error)
-        errorMessage.value = error instanceof Error ? error.message : 'Terjadi kesalahan saat mengupload file'
-      } finally {
-        loading.value = false
-      }
+    const result = await response.json()
+
+    // Kalau status bukan 200
+    if (!response.ok || result.success === false) {
+      throw new Error(result.error || result.message || 'Import gagal')
     }
+
+    // Success
+    successMessage.value =
+      `${result.message} | Total: ${result.total_rows}, Inserted: ${result.inserted_rows}, Error: ${result.error_rows}`
+
+    // Jika ada error rows tampilkan detail
+    if (result.errors && result.errors.length > 0) {
+      errorMessage.value =
+        'Beberapa baris gagal:\n' +
+        result.errors
+          .map((e: any) => `Baris ${e.row}: ${e.error}`)
+          .join('\n')
+    }
+
+    clearPreview()
+
+  } catch (error: any) {
+    if (error.message === 'Failed to fetch') {
+      errorMessage.value =
+        'Tidak dapat terhubung ke server. Pastikan backend berjalan dan CORS sudah diaktifkan.'
+    } else {
+      errorMessage.value = error.message
+    }
+  } finally {
+    loading.value = false
+  }
+}
 
     return () => (
       <div class="w-full px-36 text-gray-700">
